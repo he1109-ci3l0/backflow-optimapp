@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Backflow Optimization Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #1a1a2e;
+            color: #eee;
+            margin: 0;
+            padding: 20px;
+        }
+        h1 {
+            color: #e94560;
+            text-align: center;
+        }
+        h2 {
+            color: #0f3460;
+            background: #16213e;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+        }
+        th {
+            background-color: #e94560;
+            color: white;
+            padding: 10px;
+            text-align: left;
+        }
+        td {
+            padding: 10px;
+            border-bottom: 1px solid #0f3460;
+        }
+        tr:hover {
+            background-color: #16213e;
+        }
+        .high-risk {
+            color: #e94560;
+            font-weight: bold;
+        }
+        .low-risk {
+            color: #4ecca3;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .card {
+            background: #16213e;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .chart-frame {
+            width: 100%;
+            height: 500px;
+            border: none;
+            border-radius: 5px;
+            background: #0f3460;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚨 Backlog Optimization Dashboard</h1>
+
+        <div class="card">
+            <h2>⚠️ High Risk Products</h2>
+            <table id="high-risk-table">
+                <thead>
+                    <tr>
+                        <th>Product</th>
+                        <th>Avg Sales ($)</th>
+                        <th>Avg Inventory ($)</th>
+                        <th>Total Profit ($)</th>
+                        <th>Holding Cost ($)</th>
+                        <th>Recommended Discount (%)</th>
+                    </tr>
+                </thead>
+                <tbody id="high-risk-body"></tbody>
+            </table>
+        </div>
+
+        <div class="card">
+            <h2>📈 Charts</h2>
+            <div id="charts-container"></div>
+        </div>
+
+        <div class="card">
+            <h2>📊 All Products Risk Summary</h2>
+            <table id="summary-table">
+                <thead>
+                    <tr>
+                        <th>Product</th>
+                        <th>Avg Sales ($)</th>
+                        <th>Avg Inventory ($)</th>
+                        <th>Total Profit ($)</th>
+                        <th>True Margin ($)</th>
+                        <th>Risk Score</th>
+                        <th>Recommended Discount (%)</th>
+                    </tr>
+                </thead>
+                <tbody id="summary-body"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // Fetch and embed Plotly charts
+        const PLOTLY_SCRIPT = '<script>window.PlotlyConfig={MathJaxConfig:"local"};<\/script>' +
+            '<script charset="utf-8" src="https://cdn.plot.ly/plotly-3.5.0.min.js"><\/script>';
+
+        fetch('/api/charts')
+            .then(response => response.json())
+            .then(data => {
+                const container = document.getElementById('charts-container');
+                Object.values(data).forEach(chartHtml => {
+                    const html = chartHtml.includes('cdn.plot.ly')
+                        ? chartHtml
+                        : PLOTLY_SCRIPT + chartHtml;
+                    const iframe = document.createElement('iframe');
+                    iframe.className = 'chart-frame';
+                    iframe.srcdoc = html;
+                    container.appendChild(iframe);
+                });
+            });
+
+        // Fetch high risk products
+        fetch('/api/high_risk')
+            .then(response => response.json())
+            .then(data => {
+                const tbody = document.getElementById('high-risk-body');
+                data.forEach(product => {
+                    const row = `<tr>
+                        <td class="high-risk">${product.Product}</td>
+                        <td>${product.avg_sales}</td>
+                        <td>${product.avg_inventory}</td>
+                        <td>${product.total_profit}</td>
+                        <td>${product.avg_holding_cost}</td>
+                        <td class="high-risk">${product.avg_discount}%</td>
+                    </tr>`;
+                    tbody.innerHTML += row;
+                });
+            });
+
+        // Fetch full summary
+        fetch('/api/summary')
+            .then(response => response.json())
+            .then(data => {
+                const tbody = document.getElementById('summary-body');
+                data.forEach(product => {
+                    const riskClass = product.risk_score >= 50 ? 'high-risk' : 'low-risk';
+                    const row = `<tr>
+                        <td>${product.Product}</td>
+                        <td>${product.avg_sales}</td>
+                        <td>${product.avg_inventory}</td>
+                        <td>${product.total_profit}</td>
+                        <td>${product.avg_true_margin}</td>
+                        <td class="${riskClass}">${product.risk_score}</td>
+                        <td>${product.avg_discount}%</td>
+                    </tr>`;
+                    tbody.innerHTML += row;
+                });
+            });
+    </script>
+</body>
+</html>
